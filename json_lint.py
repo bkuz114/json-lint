@@ -13,6 +13,9 @@ python json_lint.py data.json
 # With custom output path
 python json_lint.py data.json --output formatted/data.json
 
+# Overwrite input file with formatted output
+python json_lint.py data.json --replace
+
 # Auto-generated name with custom indent
 python json_lint.py data.json --indent 4
 # Creates: data_linted.json with 4-space indent
@@ -223,6 +226,13 @@ def parse_arguments() -> argparse.Namespace:
         help="Sort object keys alphabetically (WARNING: changes output order)",
     )
 
+    parser.add_argument(
+        "--replace",
+        "-r",
+        action="store_true",
+        help="Replace the source file in-place (cannot be used with --output)",
+    )
+
     return parser.parse_args()
 
 
@@ -239,8 +249,15 @@ def main() -> int:
     # Convert to Path objects
     input_path = Path(args.input)
 
+    # Validate mutual exclusion
+    if args.replace and args.output:
+        print("Error: --replace and --output cannot be used together", file=sys.stderr)
+        return 1
+
     # Determine output path (generate default if not provided)
-    if args.output:
+    if args.replace:
+        output_path = input_path
+    elif args.output:
         output_path = Path(args.output)
     else:
         output_path = generate_default_output_path(input_path)
@@ -268,7 +285,7 @@ def main() -> int:
 
     # Write formatted JSON to output file
     success, write_error = write_json_file(
-        output_path, parsed_data, args.indent, args.sort_keys, args.force
+        output_path, parsed_data, args.indent, args.sort_keys, args.force or args.replace
     )
 
     if not success:
@@ -276,9 +293,10 @@ def main() -> int:
         return 1
 
     # Success message
+    action = "replaced" if args.replace else "created"
     print(f"Successfully linted and formatted JSON:")
     print(f"  Input:  {input_path}")
-    print(f"  Output: {output_path}")
+    print(f"  Output: {output_path} ({action})")
     print(f"  Indent: {args.indent} spaces")
     if args.sort_keys:
         print(f"  Note: Object keys were sorted alphabetically (--sort-keys enabled)")
