@@ -106,11 +106,6 @@ When no output path is specified, the tool auto-generates one in the current dir
 | `config.geojson` | `./config_linted.geojson` |
 | `settings` (no extension) | `./settings_linted.json` |
 
-## Exit codes
-
-- `0` - Success (JSON valid and formatted)
-- `1` - Error (invalid JSON, file I/O, permissions, etc.)
-
 ## Requirements
 
 - Python 3.7 or higher
