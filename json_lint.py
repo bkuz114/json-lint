@@ -112,7 +112,7 @@ def read_json_file(file_path: Path) -> Tuple[str, Any]:
 
 def write_json_file(
     file_path: Path, data: Any, indent_spaces: int, sort_keys: bool, force: bool
-) -> None:
+) -> Path:
     """
     Write formatted JSON data to a file with safety checks.
 
@@ -123,8 +123,13 @@ def write_json_file(
         sort_keys: If True, sort object keys alphabetically
         force: If True, overwrite existing files; if False, fail on existing files
 
-    Returns: None
+    Returns:
+        Path: path to output file written
     """
+    # Resolve output path to absolute
+    # (note: strict=False prevents error if parent path doesn't exist yet)
+    file_path = file_path.resolve(strict=False)
+
     # Check if output file exists and handle according to force flag
     if file_path.exists() and not force:
         raise FileExistsError(
@@ -142,6 +147,7 @@ def write_json_file(
         sort_keys=sort_keys,
     )
     file_path.write_text(formatted_json + "\n", encoding="utf-8")
+    return file_path
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -162,13 +168,13 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "input", type=str, help="Path to the input JSON file to validate and format"
+        "input", type=Path, help="Path to the input JSON file to validate and format"
     )
 
     parser.add_argument(
         "--output",
         "-o",
-        type=str,
+        type=Path,
         default=None,
         help="Path where the formatted JSON will be saved (optional: defaults to {input_stem}_linted{input_extension})",
     )
@@ -215,8 +221,11 @@ def main() -> None:
     # Parse command-line arguments
     args = parse_arguments()
 
-    # Convert to Path objects
-    input_path = Path(args.input)
+    # resolve input to absolute (handles rel, symlinks)
+    # (rel will be evaluated rel caller cwd, not script dir)
+    # note: don't resolve args.output yet as could be None, and
+    # resolve will fail if path doesn't exist yet.
+    input_path = args.input.resolve()
 
     # Validate mutual exclusion
     if args.replace and args.output:
@@ -226,7 +235,7 @@ def main() -> None:
     if args.replace:
         output_path = input_path
     elif args.output:
-        output_path = Path(args.output)
+        output_path = args.output
     else:
         output_path = generate_default_output_path(input_path)
         print(f"Note: No output path specified. Using default: {output_path}")
@@ -243,7 +252,7 @@ def main() -> None:
         raise Exception("Error: Failed to parse JSON data despite validation success.")
 
     # Write formatted JSON to output file
-    write_json_file(
+    written_path = write_json_file(
         output_path,
         parsed_data,
         args.indent,
@@ -255,7 +264,7 @@ def main() -> None:
     action = "replaced" if args.replace else "created"
     print(f"Successfully linted and formatted JSON:")
     print(f"  Input:  {input_path}")
-    print(f"  Output: {output_path} ({action})")
+    print(f"  Output: {written_path} ({action})")
     print(f"  Indent: {args.indent} spaces")
     if args.sort_keys:
         print(f"  Note: Object keys were sorted alphabetically (--sort-keys enabled)")
