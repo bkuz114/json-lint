@@ -63,7 +63,7 @@ def generate_default_output_path(input_path: Path) -> Path:
     return Path.cwd() / f"{stem}_linted{extension}"
 
 
-def validate_json_content(content: str) -> Tuple[bool, Optional[str], Optional[Any]]:
+def validate_json_content(content: str) -> Any:
     """
     Validate if a string contains valid JSON.
 
@@ -71,22 +71,18 @@ def validate_json_content(content: str) -> Tuple[bool, Optional[str], Optional[A
         content: String content to validate as JSON
 
     Returns:
-        A tuple containing:
-            - bool: True if valid JSON, False otherwise
-            - Optional[str]: Error message if invalid, None if valid
-            - Optional[Any]: Parsed JSON data if valid, None if invalid
+        Any: Parsed JSON data
     """
     try:
         parsed_data = json.loads(content)
-        return True, None, parsed_data
+        return parsed_data
     except json.JSONDecodeError as e:
-        error_msg = f"JSON decode error at line {e.lineno}, column {e.colno}: {e.msg}"
-        return False, error_msg, None
+        raise json.JSONDecodeError(
+            f"JSON decode error at line {e.lineno}, column {e.colno}: {e.msg}"
+        ) from e
 
 
-def read_json_file(
-    file_path: Path,
-) -> Tuple[Optional[str], Optional[str], Optional[Any]]:
+def read_json_file(file_path: Path) -> Tuple[str, Any]:
     """
     Read and validate a JSON file.
 
@@ -95,40 +91,28 @@ def read_json_file(
 
     Returns:
         A tuple containing:
-            - Optional[str]: File content as string if successful
-            - Optional[str]: Error message if failed
-            - Optional[Any]: Parsed JSON data if successful
+            - str: File content as string if successful
+            - Any: Parsed JSON data if successful
 
     Raises:
         FileNotFoundError: If the file doesn't exist
         PermissionError: If the file can't be read due to permissions
     """
     if not file_path.exists():
-        return None, f"Input file does not exist: {file_path}", None
+        raise FileNotFoundError(f"Input file does not exist: {file_path}")
 
     if not file_path.is_file():
-        return None, f"Path is not a file: {file_path}", None
+        raise Exception(f"Path is not a file: {file_path}")
 
-    try:
-        content = file_path.read_text(encoding="utf-8")
-        is_valid, error_msg, parsed_data = validate_json_content(content)
+    content = file_path.read_text(encoding="utf-8")
+    parsed_data = validate_json_content(content)
 
-        if not is_valid:
-            return None, f"Invalid JSON in {file_path}: {error_msg}", None
-
-        return content, None, parsed_data
-
-    except PermissionError as e:
-        return None, f"Permission denied when reading {file_path}: {e}", None
-    except UnicodeDecodeError as e:
-        return None, f"File encoding error (expected UTF-8): {e}", None
-    except Exception as e:
-        return None, f"Unexpected error reading {file_path}: {e}", None
+    return content, parsed_data
 
 
 def write_json_file(
     file_path: Path, data: Any, indent_spaces: int, sort_keys: bool, force: bool
-) -> Tuple[bool, Optional[str]]:
+) -> None:
     """
     Write formatted JSON data to a file with safety checks.
 
@@ -139,40 +123,25 @@ def write_json_file(
         sort_keys: If True, sort object keys alphabetically
         force: If True, overwrite existing files; if False, fail on existing files
 
-    Returns:
-        A tuple containing:
-            - bool: True if write successful, False otherwise
-            - Optional[str]: Error message if failed, None if successful
+    Returns: None
     """
     # Check if output file exists and handle according to force flag
     if file_path.exists() and not force:
-        return (
-            False,
-            f"Output file already exists: {file_path}. Use --force to overwrite.",
+        raise FileExistsError(
+            f"Output file already exists: {file_path}. Use --force to overwrite."
         )
 
     # Create parent directories if they don't exist
-    try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        return False, f"Failed to create output directory {file_path.parent}: {e}"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Write formatted JSON
-    try:
-        formatted_json = json.dumps(
-            data,
-            indent=indent_spaces,
-            ensure_ascii=False,  # Preserve non-ASCII characters
-            sort_keys=sort_keys,
-        )
-        file_path.write_text(formatted_json + "\n", encoding="utf-8")
-        return True, None
-    except TypeError as e:
-        return False, f"Data serialization error: {e}"
-    except PermissionError as e:
-        return False, f"Permission denied when writing to {file_path}: {e}"
-    except Exception as e:
-        return False, f"Unexpected error writing to {file_path}: {e}"
+    formatted_json = json.dumps(
+        data,
+        indent=indent_spaces,
+        ensure_ascii=False,  # Preserve non-ASCII characters
+        sort_keys=sort_keys,
+    )
+    file_path.write_text(formatted_json + "\n", encoding="utf-8")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -236,7 +205,7 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
+def main() -> None:
     """
     Main entry point for the JSON lint tool.
 
@@ -251,8 +220,7 @@ def main() -> int:
 
     # Validate mutual exclusion
     if args.replace and args.output:
-        print("Error: --replace and --output cannot be used together", file=sys.stderr)
-        return 1
+        raise ValueError("Error: --replace and --output cannot be used together")
 
     # Determine output path (generate default if not provided)
     if args.replace:
@@ -265,36 +233,23 @@ def main() -> int:
 
     # Validate indent argument range (though argparse should handle this)
     if args.indent < 0:
-        print("Error: Indent spaces cannot be negative.", file=sys.stderr)
-        return 1
+        raise ValueError("Error: Indent spaces cannot be negative.")
 
     # Read and validate input file
-    content, error_msg, parsed_data = read_json_file(input_path)
-
-    if error_msg:
-        print(f"Error: {error_msg}", file=sys.stderr)
-        return 1
+    content, parsed_data = read_json_file(input_path)
 
     # Ensure we have parsed data (should be valid at this point)
     if parsed_data is None:
-        print(
-            "Error: Failed to parse JSON data despite validation success.",
-            file=sys.stderr,
-        )
-        return 1
+        raise Exception("Error: Failed to parse JSON data despite validation success.")
 
     # Write formatted JSON to output file
-    success, write_error = write_json_file(
+    write_json_file(
         output_path,
         parsed_data,
         args.indent,
         args.sort_keys,
         args.force or args.replace,
     )
-
-    if not success:
-        print(f"Error: {write_error}", file=sys.stderr)
-        return 1
 
     # Success message
     action = "replaced" if args.replace else "created"
@@ -305,8 +260,6 @@ def main() -> int:
     if args.sort_keys:
         print(f"  Note: Object keys were sorted alphabetically (--sort-keys enabled)")
 
-    return 0
-
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
