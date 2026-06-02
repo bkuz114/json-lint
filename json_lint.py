@@ -285,7 +285,11 @@ def main() -> int:
 
     # Write formatted JSON to output file
     success, write_error = write_json_file(
-        output_path, parsed_data, args.indent, args.sort_keys, args.force or args.replace
+        output_path,
+        parsed_data,
+        args.indent,
+        args.sort_keys,
+        args.force or args.replace,
     )
 
     if not success:
