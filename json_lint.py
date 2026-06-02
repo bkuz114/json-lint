@@ -11,7 +11,7 @@ python json_lint.py data.json
 # Creates: data_linted.json
 
 # With custom output path
-python json_lint.py data.json formatted/data.json
+python json_lint.py data.json --output formatted/data.json
 
 # Auto-generated name with custom indent
 python json_lint.py data.json --indent 4
