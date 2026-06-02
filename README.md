@@ -42,7 +42,7 @@ jsonlint data.json --indent 4
 python json_lint.py data.json
 
 # Specify custom output path
-python json_lint.py data.json formatted/data.json
+python json_lint.py data.json --output formatted/data.json
 
 # Force overwrite existing output file
 python json_lint.py data.json --force
@@ -91,7 +91,7 @@ Output files default to the **current working directory**, not the input file's 
 | Command | Input location | Output location |
 |---------|---------------|-----------------|
 | `jsonlint ~/data/data.json` | `/home/user/data/data.json` | `./data_linted.json` |
-| `jsonlint ~/data/data.json ~/output/clean.json` | `/home/user/data/data.json` | `/home/user/output/clean.json` |
+| `jsonlint ~/data/data.json --output ~/output/clean.json` | `/home/user/data/data.json` | `/home/user/output/clean.json` |
 
 ## Output naming scheme
 
