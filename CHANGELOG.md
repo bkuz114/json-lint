@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Short form `-o` for specifying output path
+- `--replace` / `-r` flag for in-place file modification
+  - Implies `--force` (no need for separate force flag)
+  - Mutually exclusive with `--output`
 
 ## [0.1.0] - 2026-06-01
 

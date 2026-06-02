@@ -44,6 +44,9 @@ python json_lint.py data.json
 # Specify custom output path
 python json_lint.py data.json --output formatted/data.json
 
+# Replace input with formatted JSON
+python json_lint.py data.json --replace
+
 # Force overwrite existing output file
 python json_lint.py data.json --force
 ```
