@@ -194,9 +194,9 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "output",
+        "--output",
+        "-o",
         type=str,
-        nargs="?",  # Makes output optional
         default=None,
         help="Path where the formatted JSON will be saved (optional: defaults to {input_stem}_linted{input_extension})",
     )
